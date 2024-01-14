@@ -35,34 +35,6 @@
 
 **Output**: runbook.MD
 
-**Folder Struture**
-├── CHANGELOG.md
-├── README.md
-├── build.sh
-├── dev
-│ ├── bin
-│ ├── include
-│ ├── lib
-│ └── pyvenv.cfg
-├── docker-compose.yml
-├── pyproject.toml
-├── src
-│ ├── init.py
-│ ├── flatting_data.py
-│ ├── load_dims.py
-│ ├── load_facts.py
-├── terraform
-│ ├── dynamo.tf
-│ ├── iam.tf
-│ ├── lambda.tf
-│ ├── main.tf
-│ ├── s3.tf
-│ ├── triggers.tf
-│ └── varriable.tf
-└── tests
-├── init.py
-└── test_flatting_data.py
-
 ### Freature 2 and 3
 
 ##### F2.0:
