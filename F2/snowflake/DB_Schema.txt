@@ -1,0 +1,209 @@
+create or replace database open_weather;
+
+use database open_weather;
+use schema public;
+
+CREATE WAREHOUSE "compute_wh"
+  WITH WAREHOUSE_SIZE = 'XSMALL'
+    WAREHOUSE_TYPE = 'STANDARD'
+    AUTO_SUSPEND = 600
+    AUTO_RESUME = TRUE;
+
+create or replace file format json_format 
+    type = json;
+
+create or replace stage stage_json
+  url = 's3://snowflake112358'
+  storage_integration = snowflake_aws;
+
+--TABLE TO LOAD JSON DATA
+
+create or replace table temp_log 
+(
+  logcontent VARIANT
+);
+
+create or replace table table_raw 
+(
+  dt                    string,
+  coord_lon             string,
+  coord_lat             string,
+  weather_id            string,
+  weather_main          string,
+  weather_description   string,
+  weather_icon          string,
+  base                  string,
+  main_temp             string,
+  main_feels_like       string,
+  main_temp_min         string,
+  main_temp_max         string,
+  main_pressure         string,
+  main_humidity         string,
+  main_sea_level        string,
+  main_grnd_level       string,
+  visibility            string,
+  wind_speed            string,
+  wind_deg              string,
+  wind_gust             string,
+  clouds_all            string,
+  sys_country           string,
+  sys_sunrise           string,
+  sys_sunset            string,
+  timezone              string,
+  city_id               string,
+  name                  string,
+  sys_type              string,
+  sys_id                string
+);
+
+create or replace table table_wrong_type like table_raw;
+
+create or replace table table_landing 
+(
+  dt                    TIMESTAMP_NTZ,
+  update_timestamp      TIMESTAMP_NTZ,
+  coord_lon             float,
+  coord_lat             float,
+  weather_id            int,
+  weather_main          string,
+  weather_description   string,
+  weather_icon          string,
+  base                  string,
+  main_temp             float,
+  main_feels_like       float,
+  main_temp_min         float,
+  main_temp_max         float,
+  main_pressure         float,
+  main_humidity         float,
+  main_sea_level        float,
+  main_grnd_level       float,
+  visibility            float,
+  wind_speed            float,
+  wind_deg              float,
+  wind_gust             float,
+  clouds_all            float,
+  sys_country           string,
+  sys_sunrise           TIMESTAMP_NTZ,
+  sys_sunset            TIMESTAMP_NTZ,
+  timezone              float,
+  city_id               int,
+  name                  string,
+  sys_type              int,
+  sys_id                int
+);
+
+create or replace table table_scd1 like table_landing;
+
+create or replace table table_scd2 like         table_scd1;
+            alter table table_scd2 add column   start_time TIMESTAMP_NTZ;
+            alter table table_scd2 add column   end_time TIMESTAMP_NTZ;
+            alter table table_scd2 add column   current_flag_status string;
+
+create or replace sequence coord_id     start = 1;
+create or replace sequence sys_id_pk    start = 1;
+
+--DIMENSIONAL DATABASE SCHEMA CREATE
+
+create or replace table DIM_Coord
+(
+  coord_id      int default coord_id.nextval,
+  coord_lon     float,
+  coord_lat     float,
+  constraint pk_co primary key (coord_id)
+);                 
+
+create or replace table DIM_Sys
+(
+  sys_id_pk     int default sys_id_pk.nextval,
+  sys_country   string,
+  base          string,
+  sys_type      int,
+  sys_id        int,
+  sys_sunrise   TIMESTAMP_NTZ,
+  sys_sunset    TIMESTAMP_NTZ,
+  constraint pk_sys primary key (sys_id_pk)
+);
+                                
+
+create or replace table DIM_City
+(
+  city_id   int,
+  timezone  float,
+  name      string,
+  constraint pk_ct primary key (city_id)
+);
+                                   
+create or replace table DIM_Weather
+(
+  weather_id            int,
+  weather_main          string,
+  weather_description   string ,
+  weather_icon          string ,
+  constraint pk_wt primary key (weather_id)
+);
+
+create or replace table DIM_Wind
+(
+  dt            TIMESTAMP_NTZ,
+  wind_speed    float,
+  wind_deg      float,
+  wind_gust     float,
+  constraint pk_wi primary key (dt)
+);
+                                
+create or replace table DIM_Cloud
+(
+  dt            TIMESTAMP_NTZ,
+  clouds_all    float,
+  constraint pk_cl primary key (dt)
+);
+                                
+create or replace table DIM_Visibility
+(
+  dt TIMESTAMP_NTZ,
+  visibility float,
+  constraint pk_vi primary key (dt)
+);
+                                
+create or replace table DIM_Main
+(
+  dt                TIMESTAMP_NTZ,
+  main_temp         float,
+  main_feels_like   float ,
+  main_temp_min     float,
+  main_temp_max     float,
+  main_pressure     float,
+  main_humidity     float,
+  main_sea_level    float,
+  main_grnd_level   float,
+  constraint pk_ma primary key (dt)
+);
+                                
+create or replace table FACT_OpenWeather
+(
+  dt TIMESTAMP_NTZ,
+  sys_id_pk int,
+  city_id int,
+  weather_id int,
+  coord_id int,
+  constraint fk_co foreign key (coord_id)
+  references DIM_Coord(coord_id),
+  constraint fk_sys foreign key (sys_id_pk)
+  references DIM_Sys (sys_id_pk),
+  constraint fk_ct foreign key (city_id)
+  references DIM_City (city_id),
+  constraint fk_wt foreign key (weather_id)
+  references DIM_Weather (weather_id),
+  constraint fk_wi foreign key (dt)
+  references DIM_Wind (dt),
+  constraint fk_cl foreign key (dt)
+  references DIM_Cloud (dt),
+  constraint fk_vi foreign key (dt)
+  references DIM_Visibility (dt),
+  constraint fk_ma foreign key (dt)
+  references DIM_Main (dt)
+);
+
+
+
+

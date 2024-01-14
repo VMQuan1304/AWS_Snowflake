@@ -1,0 +1,746 @@
+use database open_weather;
+use schema public;
+
+create or replace file format json_format 
+    type = json;
+ 
+create or replace stage stage_json
+  url = 's3://snowflake112358'
+  storage_integration = snowflake_aws;
+
+--CREATE STREAM 
+create or replace stream check_temp_log on table temp_log;
+create or replace stream check_raw on table table_raw;
+create or replace stream check_scd1 on table table_scd1;
+
+--CREATE SNOWPIPE TO LOAD DATA FROM S3 BUCKET <SNOWFLAKE112358>
+create or replace pipe open_weather.public.pipe_load_json
+    auto_ingest=true as
+      copy into temp_log
+      from @stage_json
+        file_format = (format_name = json_format);
+
+--TASK1 LOAD DATA TYPE VARIANT FROM TEMP_LOG INTO RAW TABLE AS STRING TYPE
+create or replace task task1_root_Loadinto_RawTable
+    warehouse = compute_wh 
+    schedule = '1 minute'
+when
+  system$stream_has_data('check_temp_log')
+as
+insert overwrite into table_raw
+select
+  LOGCONTENT['dt'],
+  LOGCONTENT['coord_lon'],
+  LOGCONTENT['coord_lat'],
+  LOGCONTENT['weather_id'],
+  LOGCONTENT['weather_main'],
+  LOGCONTENT['weather_description'],
+  LOGCONTENT['weather_icon'],
+  LOGCONTENT['base'],
+  LOGCONTENT['main_temp'],
+  LOGCONTENT['main_feels_like'],
+  LOGCONTENT['main_temp_min'],
+  LOGCONTENT['main_temp_max'],
+  LOGCONTENT['main_pressure'],
+  LOGCONTENT['main_humidity'],
+  LOGCONTENT['main_sea_level'],
+  LOGCONTENT['main_grnd_level'],
+  LOGCONTENT['visibility'],
+  LOGCONTENT['wind_speed'],
+  LOGCONTENT['wind_deg'],
+  LOGCONTENT['wind_gust'],
+  LOGCONTENT['clouds_all'],
+  LOGCONTENT['sys_country'],
+  LOGCONTENT['sys_sunrise'],
+  LOGCONTENT['sys_sunset'],
+  LOGCONTENT['timezone'],
+  LOGCONTENT['id'],
+  LOGCONTENT['name'],
+  LOGCONTENT['sys_type'],
+  LOGCONTENT['sys_id']
+from temp_log;
+
+--TASK 2 ERROR HANDLING AND ETL USING <Error-handling Conversion Functions> 
+--IF DATA TYPE IS TRUE THEN LOAD INTO TABLE_LANDING
+--IF DATA TYPE IS FALSE THEN LOAD INTO TABLE_WRONG_TYPE
+create or replace task task2_child_ETL_Landing
+    warehouse = compute_wh
+    after task1_root_Loadinto_RawTable
+as
+insert overwrite first
+  when  DT_0                    is null and DT                      is not null or
+        COORD_LON_0             is null and COORD_LON               is not null or
+        COORD_LAT_0             is null and COORD_LAT               is not null or
+        WEATHER_ID_0            is null and WEATHER_ID              is not null or
+        WEATHER_MAIN_0          is null and WEATHER_MAIN            is not null or
+        WEATHER_DESCRIPTION_0   is null and WEATHER_DESCRIPTION     is not null or
+        WEATHER_ICON_0          is null and WEATHER_ICON            is not null or
+        BASE_0                  is null and BASE                    is not null or
+        MAIN_TEMP_0             is null and MAIN_TEMP               is not null or
+        MAIN_FEELS_LIKE_0       is null and MAIN_FEELS_LIKE         is not null or
+        MAIN_TEMP_MIN_0         is null and MAIN_TEMP_MIN           is not null or
+        MAIN_TEMP_MAX_0         is null and MAIN_TEMP_MAX           is not null or
+        MAIN_PRESSURE_0         is null and MAIN_PRESSURE           is not null or
+        MAIN_HUMIDITY_0         is null and MAIN_HUMIDITY           is not null or
+        MAIN_SEA_LEVEL_0        is null and MAIN_SEA_LEVEL          is not null or
+        MAIN_GRND_LEVEL_0       is null and MAIN_GRND_LEVEL         is not null or
+        VISIBILITY_0            is null and VISIBILITY              is not null or
+        WIND_SPEED_0            is null and WIND_SPEED              is not null or
+        WIND_DEG_0              is null and WIND_DEG                is not null or
+        WIND_GUST_0             is null and WIND_GUST               is not null or
+        CLOUDS_ALL_0            is null and CLOUDS_ALL              is not null or
+        SYS_COUNTRY_0           is null and SYS_COUNTRY             is not null or
+        SYS_SUNRISE_0           is null and SYS_SUNRISE             is not null or
+        SYS_SUNSET_0            is null and SYS_SUNSET              is not null or
+        TIMEZONE_0              is null and TIMEZONE                is not null or
+        CITY_ID_0               is null and CITY_ID                 is not null or
+        NAME_0                  is null and NAME                    is not null or
+        SYS_TYPE_0              is null and SYS_TYPE                is not null or
+        SYS_ID_0                is null and SYS_ID                  is not null
+  then
+        into table_wrong_type
+            (
+              DT,
+              COORD_LON,
+              COORD_LAT,
+              WEATHER_ID,
+              WEATHER_MAIN,
+              WEATHER_DESCRIPTION,
+              WEATHER_ICON,
+              BASE,
+              MAIN_TEMP,
+              MAIN_FEELS_LIKE,
+              MAIN_TEMP_MIN,
+              MAIN_TEMP_MAX,
+              MAIN_PRESSURE,
+              MAIN_HUMIDITY,
+              MAIN_SEA_LEVEL,
+              MAIN_GRND_LEVEL,
+              VISIBILITY,
+              WIND_SPEED,
+              WIND_DEG,
+              WIND_GUST,
+              CLOUDS_ALL,
+              SYS_COUNTRY,
+              SYS_SUNRISE,
+              SYS_SUNSET,
+              TIMEZONE,
+              CITY_ID,
+              NAME,
+              SYS_TYPE,
+              SYS_ID
+            )
+        values
+            (
+              DT,
+              COORD_LON,
+              COORD_LAT,
+              WEATHER_ID,
+              WEATHER_MAIN,
+              WEATHER_DESCRIPTION,
+              WEATHER_ICON,
+              BASE,
+              MAIN_TEMP,
+              MAIN_FEELS_LIKE,
+              MAIN_TEMP_MIN,
+              MAIN_TEMP_MAX,
+              MAIN_PRESSURE,
+              MAIN_HUMIDITY,
+              MAIN_SEA_LEVEL,
+              MAIN_GRND_LEVEL,
+              VISIBILITY,
+              WIND_SPEED,
+              WIND_DEG,
+              WIND_GUST,
+              CLOUDS_ALL,
+              SYS_COUNTRY,
+              SYS_SUNRISE,
+              SYS_SUNSET,
+              TIMEZONE,
+              CITY_ID,
+              NAME,
+              SYS_TYPE,
+              SYS_ID
+            ) 
+  else
+        into table_landing 
+            (
+              DT,
+              UPDATE_TIMESTAMP,
+              COORD_LON,
+              COORD_LAT,
+              WEATHER_ID,
+              WEATHER_MAIN,
+              WEATHER_DESCRIPTION,
+              WEATHER_ICON,
+              BASE,
+              MAIN_TEMP,
+              MAIN_FEELS_LIKE,
+              MAIN_TEMP_MIN,
+              MAIN_TEMP_MAX,
+              MAIN_PRESSURE,
+              MAIN_HUMIDITY,
+              MAIN_SEA_LEVEL,
+              MAIN_GRND_LEVEL,
+              VISIBILITY,
+              WIND_SPEED,
+              WIND_DEG,
+              WIND_GUST,
+              CLOUDS_ALL,
+              SYS_COUNTRY,
+              SYS_SUNRISE,
+              SYS_SUNSET,
+              TIMEZONE,
+              CITY_ID,
+              NAME,
+              SYS_TYPE,
+              SYS_ID
+            ) 
+         values
+            (
+              DT_0,
+              to_timestamp(current_timestamp),
+              COORD_LON_0,
+              COORD_LAT_0,
+              WEATHER_ID_0,
+              WEATHER_MAIN_0,
+              WEATHER_DESCRIPTION_0,
+              WEATHER_ICON_0,
+              BASE_0,
+              MAIN_TEMP_0,
+              MAIN_FEELS_LIKE_0,
+              MAIN_TEMP_MIN_0,
+              MAIN_TEMP_MAX_0,
+              MAIN_PRESSURE_0,
+              MAIN_HUMIDITY_0,
+              MAIN_SEA_LEVEL_0,
+              MAIN_GRND_LEVEL_0,
+              VISIBILITY_0,
+              WIND_SPEED_0,
+              WIND_DEG_0,
+              WIND_GUST_0,
+              CLOUDS_ALL_0,
+              SYS_COUNTRY_0,
+              SYS_SUNRISE_0,
+              SYS_SUNSET_0,
+              TIMEZONE_0,
+              CITY_ID_0,
+              NAME_0,
+              SYS_TYPE_0,
+              SYS_ID_0
+            ) 
+select  try_to_timestamp (DT)                               as DT_0,
+        try_to_number    (COORD_LON, 38, 2)                 as COORD_LON_0,
+        try_to_number    (COORD_LAT, 38, 2)                 as COORD_LAT_0,
+        try_to_number    (WEATHER_ID, 38, 0)                as WEATHER_ID_0,
+        WEATHER_MAIN                                        as WEATHER_MAIN_0,
+        WEATHER_DESCRIPTION                                 as WEATHER_DESCRIPTION_0,
+        WEATHER_ICON                                        as WEATHER_ICON_0,
+        BASE                                                as BASE_0,
+        try_to_number    (MAIN_TEMP, 38, 2)-275.15          as MAIN_TEMP_0,
+        try_to_number    (MAIN_FEELS_LIKE, 38, 2)-275.15    as MAIN_FEELS_LIKE_0,
+        try_to_number    (MAIN_TEMP_MIN, 38, 2)-275.15      as MAIN_TEMP_MIN_0,
+        try_to_number    (MAIN_TEMP_MAX, 38, 2)-275.15      as MAIN_TEMP_MAX_0,
+        try_to_number    (MAIN_PRESSURE, 38, 2)             as MAIN_PRESSURE_0,
+        try_to_number    (MAIN_HUMIDITY, 38, 2)             as MAIN_HUMIDITY_0,
+        try_to_number    (MAIN_SEA_LEVEL, 38, 2)            as MAIN_SEA_LEVEL_0,
+        try_to_number    (MAIN_GRND_LEVEL, 38, 2)           as MAIN_GRND_LEVEL_0,
+        try_to_number    (VISIBILITY, 38, 2)/1000           as VISIBILITY_0,
+        try_to_number    (WIND_SPEED, 38, 2)                as WIND_SPEED_0,
+        try_to_number    (WIND_DEG, 38, 2)                  as WIND_DEG_0,
+        try_to_number    (WIND_GUST, 38, 2)                 as WIND_GUST_0,
+        try_to_number    (CLOUDS_ALL, 38, 2)                as CLOUDS_ALL_0,
+        SYS_COUNTRY                                         as SYS_COUNTRY_0,
+        try_to_timestamp (SYS_SUNRISE)                      as SYS_SUNRISE_0,
+        try_to_timestamp (SYS_SUNSET)                       as SYS_SUNSET_0,
+        try_to_number    (TIMEZONE, 38, 0)/3600             as TIMEZONE_0,
+        try_to_number    (CITY_ID, 38, 0)                   as CITY_ID_0,
+        NAME                                                as NAME_0,
+        try_to_number    (SYS_TYPE, 38, 0)                  as SYS_TYPE_0,
+        try_to_number    (SYS_ID, 38, 0)                    as SYS_ID_0,
+                                                               DT, 
+                                                               COORD_LON,
+                                                               COORD_LAT,
+                                                               WEATHER_ID,
+                                                               WEATHER_MAIN,
+                                                               WEATHER_DESCRIPTION,
+                                                               WEATHER_ICON,
+                                                               BASE,
+                                                               MAIN_TEMP,
+                                                               MAIN_FEELS_LIKE,
+                                                               MAIN_TEMP_MIN,
+                                                               MAIN_TEMP_MAX,
+                                                               MAIN_PRESSURE,
+                                                               MAIN_HUMIDITY,
+                                                               MAIN_SEA_LEVEL,
+                                                               MAIN_GRND_LEVEL,
+                                                               VISIBILITY,
+                                                               WIND_SPEED,
+                                                               WIND_DEG,
+                                                               WIND_GUST,
+                                                               CLOUDS_ALL,
+                                                               SYS_COUNTRY,
+                                                               SYS_SUNRISE,
+                                                               SYS_SUNSET,
+                                                               TIMEZONE,
+                                                               CITY_ID,
+                                                               NAME,
+                                                               SYS_TYPE,
+                                                               SYS_ID
+from table_raw;
+
+
+--TASK3 SAVE DATA AS SLOWLY CHANGING DIMENSION TYPE 1
+create or replace task task3_child_Loadinto_Scd1
+    warehouse = compute_wh
+    after task2_child_ETL_Landing
+as
+merge into table_scd1 ts1
+using (select * from table_landing) tl
+  on ts1.dt = tl.dt
+  when matched and
+        (
+          ts1.coord_lon             != tl.coord_lon             or
+          ts1.coord_lat             != tl.coord_lat             or                      
+          ts1.weather_id            != tl.weather_id            or                           
+          ts1.weather_main          != tl.weather_main          or                          
+          ts1.weather_description   != tl.weather_description   or                            
+          ts1.weather_icon          != tl.weather_icon          or                           
+          ts1.base                  != tl.base                  or                          
+          ts1.main_temp             != tl.main_temp             or                            
+          ts1.main_feels_like       != tl.main_feels_like       or                            
+          ts1.main_temp_min         != tl.main_temp_min         or                           
+          ts1.main_temp_max         != tl.main_temp_max         or                           
+          ts1.main_pressure         != tl.main_pressure         or                            
+          ts1.main_humidity         != tl.main_humidity         or                             
+          ts1.main_sea_level        != tl.main_sea_level        or                             
+          ts1.main_grnd_level       != tl.main_grnd_level       or                             
+          ts1.visibility            != tl.visibility            or                           
+          ts1.wind_speed            != tl.wind_speed            or                            
+          ts1.wind_deg              != tl.wind_deg              or                            
+          ts1.wind_gust             != tl.wind_gust             or                                                 
+          ts1.clouds_all            != tl.clouds_all            or 
+          ts1.sys_country           != tl.sys_country           or                          
+          ts1.sys_sunrise           != tl.sys_sunrise           or
+          ts1.sys_sunset            != tl.sys_sunset            or
+          ts1.timezone              != tl.timezone              or
+          ts1.city_id               != tl.city_id               or
+          ts1.name                  != tl.name                  or
+          ts1.sys_type              != tl.sys_type              or 
+          ts1.sys_id                != tl.sys_id
+        )
+    then update set 
+          ts1.update_timestamp      = tl.update_timestamp,
+          ts1.coord_lon             = tl.coord_lon,
+          ts1.coord_lat             = tl.coord_lat,                        
+          ts1.weather_id            = tl.weather_id,                           
+          ts1.weather_main          = tl.weather_main,                           
+          ts1.weather_description   = tl.weather_description,                            
+          ts1.weather_icon          = tl.weather_icon,                           
+          ts1.base                  = tl.base,                          
+          ts1.main_temp             = tl.main_temp,                            
+          ts1.main_feels_like       = tl.main_feels_like,                            
+          ts1.main_temp_min         = tl.main_temp_min,                            
+          ts1.main_temp_max         = tl.main_temp_max,                            
+          ts1.main_pressure         = tl.main_pressure,                            
+          ts1.main_humidity         = tl.main_humidity,                             
+          ts1.main_sea_level        = tl.main_sea_level,                             
+          ts1.main_grnd_level       = tl.main_grnd_level,                             
+          ts1.visibility            = tl.visibility,                           
+          ts1.wind_speed            = tl.wind_speed,                            
+          ts1.wind_deg              = tl.wind_deg,                            
+          ts1.wind_gust             = tl.wind_gust,                                          
+          ts1.clouds_all            = tl.clouds_all, 
+          ts1.dt                    = tl.dt,
+          ts1.sys_country           = tl.sys_country,                           
+          ts1.sys_sunrise           = tl.sys_sunrise,
+          ts1.sys_sunset            = tl.sys_sunset,
+          ts1.timezone              = tl.timezone,
+          ts1.city_id               = tl.city_id,
+          ts1.name                  = tl.name,
+          ts1.sys_type              = tl.sys_type,
+          ts1.sys_id                = tl.sys_id
+  when not matched then insert
+        (
+          ts1.dt,
+          ts1.update_timestamp,
+          ts1.coord_lon,
+          ts1.coord_lat,                        
+          ts1.weather_id,                           
+          ts1.weather_main,                           
+          ts1.weather_description,                            
+          ts1.weather_icon,                           
+          ts1.base,                          
+          ts1.main_temp,                            
+          ts1.main_feels_like,                            
+          ts1.main_temp_min,                            
+          ts1.main_temp_max,                            
+          ts1.main_pressure,                            
+          ts1.main_humidity,                             
+          ts1.main_sea_level,                             
+          ts1.main_grnd_level,                             
+          ts1.visibility,                           
+          ts1.wind_speed,                            
+          ts1.wind_deg,                            
+          ts1.wind_gust,                                              
+          ts1.clouds_all,
+          ts1.sys_country,                           
+          ts1.sys_sunrise,
+          ts1.sys_sunset,
+          ts1.timezone,
+          ts1.city_id,
+          ts1.name,
+          ts1.sys_type,
+          ts1.sys_id
+        )
+       values
+        (
+          tl.dt,
+          tl.update_timestamp,
+          tl.coord_lon,
+          tl.coord_lat,                        
+          tl.weather_id,                           
+          tl.weather_main,                           
+          tl.weather_description,                            
+          tl.weather_icon,                           
+          tl.base,                          
+          tl.main_temp,                            
+          tl.main_feels_like,                            
+          tl.main_temp_min,                            
+          tl.main_temp_max,                            
+          tl.main_pressure,                            
+          tl.main_humidity,                             
+          tl.main_sea_level,                             
+          tl.main_grnd_level,                             
+          tl.visibility,                           
+          tl.wind_speed,                            
+          tl.wind_deg,                            
+          tl.wind_gust,                                                 
+          tl.clouds_all,
+          tl.sys_country,                           
+          tl.sys_sunrise,
+          tl.sys_sunset,
+          tl.timezone,
+          tl.city_id,
+          tl.name,
+          tl.sys_type,
+          tl.sys_id
+        );
+
+
+--TASK4 SAVE DATA AS SLOWLY CHANGING DIMENSION TYPE 2
+create or replace task task4_child_Loadinto_Scd2
+    warehouse = compute_wh
+    after task3_child_Loadinto_Scd1
+as
+merge into table_scd2 ts2
+using (select * from check_scd1) cs1
+  on    ts2.dt                  = cs1.dt 
+  and   ts2.update_timestamp    = cs1.update_timestamp
+    when matched        and (cs1.metadata$action='DELETE')
+    then update set 
+            end_time = to_timestamp(current_timestamp),
+            current_flag_status = 'False'
+    when not matched    and (cs1.metadata$action='INSERT')
+    then insert
+        (
+          ts2.dt,
+          ts2.update_timestamp,
+          start_time,
+          end_time,
+          current_flag_status,
+          ts2.coord_lon,
+          ts2.coord_lat,                        
+          ts2.weather_id,                           
+          ts2.weather_main,                           
+          ts2.weather_description,                            
+          ts2.weather_icon,                           
+          ts2.base,                          
+          ts2.main_temp,                            
+          ts2.main_feels_like,                            
+          ts2.main_temp_min,                            
+          ts2.main_temp_max,                            
+          ts2.main_pressure,                            
+          ts2.main_humidity,                             
+          ts2.main_sea_level,                             
+          ts2.main_grnd_level,                             
+          ts2.visibility,                           
+          ts2.wind_speed,                            
+          ts2.wind_deg,                            
+          ts2.wind_gust,                                                     
+          ts2.clouds_all,
+          ts2.sys_country,                           
+          ts2.sys_sunrise,
+          ts2.sys_sunset,
+          ts2.timezone,
+          ts2.city_id,
+          ts2.name,
+          ts2.sys_type,
+          ts2.sys_id
+        )
+       values
+       (
+          cs1.dt,
+          cs1.update_timestamp,
+          to_timestamp(current_timestamp),
+          NULL,
+          'True',
+          cs1.coord_lon,
+          cs1.coord_lat,                        
+          cs1.weather_id,                           
+          cs1.weather_main,                           
+          cs1.weather_description,                            
+          cs1.weather_icon,                           
+          cs1.base,                          
+          cs1.main_temp,                            
+          cs1.main_feels_like,                            
+          cs1.main_temp_min,                            
+          cs1.main_temp_max,                            
+          cs1.main_pressure,                            
+          cs1.main_humidity,                             
+          cs1.main_sea_level,                             
+          cs1.main_grnd_level,                             
+          cs1.visibility,                           
+          cs1.wind_speed,                            
+          cs1.wind_deg,                            
+          cs1.wind_gust,                                                    
+          cs1.clouds_all,
+          cs1.sys_country,                           
+          cs1.sys_sunrise,
+          cs1.sys_sunset,
+          cs1.timezone,
+          cs1.city_id,
+          cs1.name,
+          cs1.sys_type,
+          cs1.sys_id
+        );
+
+--TASK5 LOAD NEWEST DATA FROM TABLE_SCD2 INTO DIMENSION TABLE
+create or replace task task5_child_Loadinto_DIMCoord
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Coord dc
+using (select distinct coord_lon, coord_lat, current_flag_status from table_scd2) ts2
+  on    dc.coord_lon = ts2.coord_lon and   
+        dc.coord_lat = ts2.coord_lat
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+    insert   (dc.coord_lon,     dc.coord_lat)
+      values (ts2.coord_lon,    ts2.coord_lat);
+
+create or replace task task5_child_Loadinto_DIMCity
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_City dc1
+using (select distinct city_id, timezone, name, current_flag_status from table_scd2) ts2
+  on    dc1.city_id     = ts2.city_id and   
+        dc1.timezone    = ts2.timezone and   
+        dc1.name        = ts2.name
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+      insert (dc1.city_id, dc1.timezone, dc1.name)
+      values (ts2.city_id, ts2.timezone, ts2.name);
+
+
+create or replace task task5_child_Loadinto_DIMCloud
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Cloud dc2
+using (select * from table_scd2) ts2
+  on dc2.dt = ts2.dt
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+      insert (dc2.dt, dc2.clouds_all)
+      values (ts2.dt, ts2.clouds_all)
+    when matched and ts2.current_flag_status = 'True' and dc2.clouds_all != ts2.clouds_all
+    then 
+        update set
+        dc2.clouds_all = ts2.clouds_all;
+
+create or replace task task5_child_Loadinto_DIMMain
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Main dm
+using (select * from table_scd2) ts2
+  on dm.dt = ts2.dt
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+      insert
+      (
+       dm.dt, 
+       dm.main_temp, 
+       dm.main_feels_like, 
+       dm.main_temp_min, 
+       dm.main_temp_max, 
+       dm.main_pressure, 
+       dm.main_humidity, 
+       dm.main_sea_level, 
+       dm.main_grnd_level
+      )
+      values 
+      (
+       ts2.dt, 
+       ts2.main_temp, 
+       ts2.main_feels_like, 
+       ts2.main_temp_min, 
+       ts2.main_temp_max, 
+       ts2.main_pressure, 
+       ts2.main_humidity, 
+       ts2.main_sea_level, 
+       ts2.main_grnd_level
+      )
+    when matched and ts2.current_flag_status = 'True'
+        and 
+        (
+           dm.main_temp         != ts2.main_temp        or 
+           dm.main_feels_like   != ts2.main_feels_like  or
+           dm.main_temp_min     != ts2.main_temp_min    or
+           dm.main_temp_max     != ts2.main_temp_max    or
+           dm.main_pressure     != ts2.main_pressure    or
+           dm.main_humidity     != ts2.main_humidity    or
+           dm.main_sea_level    != ts2.main_sea_level   or
+           dm.main_grnd_level   != ts2.main_grnd_level
+        )
+    then update set 
+           dm.main_temp         = ts2.main_temp,
+           dm.main_feels_like   = ts2.main_feels_like,
+           dm.main_temp_min     = ts2.main_temp_min,
+           dm.main_temp_max     = ts2.main_temp_max,
+           dm.main_pressure     = ts2.main_pressure,
+           dm.main_humidity     = ts2.main_humidity,
+           dm.main_sea_level    = ts2.main_sea_level,
+           dm.main_grnd_level   = ts2.main_grnd_level;   
+
+
+create or replace task task5_child_Loadinto_DIMSys
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Sys ds
+using (select distinct sys_country, sys_sunrise, sys_sunset, base, sys_type, sys_id, current_flag_status from table_scd2) ts2
+  on    ds.sys_country      = ts2.sys_country and 
+        ds.sys_sunrise      = ts2.sys_sunrise and 
+        ds.sys_sunset       = ts2.sys_sunset  and 
+        ds.base             = ts2.base
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+      insert (ds.sys_country,  ds.sys_sunrise,  ds.sys_sunset,  ds.base,  ds.sys_type,  ds.sys_id)
+      values (ts2.sys_country, ts2.sys_sunrise, ts2.sys_sunset, ts2.base, ts2.sys_type, ts2.sys_id);
+
+
+create or replace task task5_child_Loadinto_DIMVisibility
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Visibility dv
+using (select * from table_scd2) ts2
+  on dv.dt = ts2.dt
+    when not matched and ts2.current_flag_status = 'True'
+    then 
+      insert (dv.dt, dv.visibility)
+      values (ts2.dt, ts2.visibility)
+    when matched and ts2.current_flag_status = 'True' and dv.visibility != ts2.visibility
+    then 
+      update set dv.visibility = ts2.visibility;
+
+create or replace task task5_child_Loadinto_DIMWeather
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Weather dw
+using (select distinct weather_id, weather_main, weather_description, weather_icon, current_flag_status from table_scd2) ts2
+  on  dw.weather_id             = ts2.weather_id            and 
+      dw.weather_main           = ts2.weather_main          and 
+      dw.weather_description    = ts2.weather_description   and 
+      dw.weather_icon           = ts2.weather_icon
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+      insert (dw.weather_id,  dw.weather_main,  dw.weather_description,  dw.weather_icon)
+      values (ts2.weather_id, ts2.weather_main, ts2.weather_description, ts2.weather_icon);
+      
+create or replace task task5_child_Loadinto_DIMWind
+    warehouse = compute_wh
+    after task4_child_Loadinto_Scd2
+as
+merge into DIM_Wind dw1
+using (select * from table_scd2) ts2
+  on dw1.dt = ts2.dt
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+      insert (dw1.dt, dw1.wind_speed, dw1.wind_deg, dw1.wind_gust)
+      values (ts2.dt, ts2.wind_speed, ts2.wind_deg, ts2.wind_gust)
+    when matched and ts2.current_flag_status = 'True' 
+    and 
+    (
+      dw1.wind_speed    != ts2.wind_speed   or 
+      dw1.wind_deg      != ts2.wind_deg     or 
+      dw1.wind_gust     != ts2.wind_gust)
+    then update set
+      dw1.wind_speed    = ts2.wind_speed,
+      dw1.wind_deg      = ts2.wind_deg,
+      dw1.wind_gust     = ts2.wind_gust;
+
+--TASK5 LOAD NEWEST DATA FROM TABLE_SCD2 INTO FACT TABLE
+create or replace task task6_child_Loadinto_FACTOpenWeather
+    warehouse = compute_wh
+    after task5_child_Loadinto_DIMWind
+as
+merge into FACT_OpenWeather fow
+using (
+       select * from table_scd2 
+       left outer join DIM_Coord 
+         on table_scd2.coord_lon    = DIM_Coord.coord_lon and 
+            table_scd2.coord_lat    = DIM_Coord.coord_lat
+       left outer join DIM_Sys
+         on table_scd2.sys_country  = DIM_Sys.sys_country and 
+            table_scd2.sys_sunrise  = DIM_Sys.sys_sunrise and 
+            table_scd2.sys_sunset   = DIM_Sys.sys_sunset
+      ) ts2
+  on fow.dt          = ts2.dt        and 
+     fow.city_id     = ts2.city_id   and 
+     fow.weather_id  = ts2.weather_id
+    when not matched and (ts2.current_flag_status = 'True')
+    then 
+    insert (fow.dt, fow.city_id, fow.weather_id, fow.coord_id, fow.sys_id_pk)
+    values (ts2.dt, ts2.city_id, ts2.weather_id, ts2.coord_id, ts2.sys_id_pk);
+
+--TASK7 TRUNCATE USED DATA TO AVOID REDUNDANT ROW IN NEXT DATA UPDATE
+create or replace task task7_child_Truncate_templog
+    warehouse = compute_wh
+    after task6_child_Loadinto_FACTOpenWeather
+as
+truncate temp_log;
+
+create or replace task task7_child_Truncate_tableraw
+    warehouse = compute_wh
+    after task6_child_Loadinto_FACTOpenWeather
+as
+truncate table_raw;
+
+create or replace task task7_child_Truncate_tablelanding
+    warehouse = compute_wh
+    after task6_child_Loadinto_FACTOpenWeather
+as
+truncate table_landing;
+
+--ACTIVATE TASK
+alter task TASK7_CHILD_TRUNCATE_TEMPLOG resume;
+alter task TASK7_CHILD_TRUNCATE_TABLERAW resume;
+alter task TASK7_CHILD_TRUNCATE_TABLELANDING resume;
+alter task TASK6_CHILD_LOADINTO_FACTOPENWEATHER resume;
+alter task TASK5_CHILD_LOADINTO_DIMWIND resume;
+alter task TASK5_CHILD_LOADINTO_DIMWEATHER resume;
+alter task TASK5_CHILD_LOADINTO_DIMVISIBILITY resume;
+alter task TASK5_CHILD_LOADINTO_DIMSYS resume;
+alter task TASK5_CHILD_LOADINTO_DIMMAIN resume;
+alter task TASK5_CHILD_LOADINTO_DIMCOORD resume;
+alter task TASK5_CHILD_LOADINTO_DIMCLOUD resume;
+alter task TASK5_CHILD_LOADINTO_DIMCITY resume;
+alter task TASK4_CHILD_LOADINTO_SCD2 resume;
+alter task TASK3_CHILD_LOADINTO_SCD1 resume;
+alter task TASK2_CHILD_ETL_LANDING resume;
+alter task TASK1_ROOT_LOADINTO_RAWTABLE resume;

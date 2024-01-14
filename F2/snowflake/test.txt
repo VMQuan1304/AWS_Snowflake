@@ -1,0 +1,78 @@
+use database open_weather;
+use schema public;
+
+--TEST SCD2
+insert into temp_log
+select parse_json
+(
+   '{
+   "coord_lon": 105.8412, 
+   "coord_lat": 21.0245, 
+   "weather_id": 804, 
+   "weather_main": "Clouds",
+   "weather_description": "overcast clouds", 
+   "weather_icon": "04d", 
+   "base": "stations", 
+   "main_temp": 350.15, 
+   "main_feels_like": 399.96, 
+   "main_temp_min": 350.15, 
+   "main_temp_max": 350.15, 
+   "main_pressure": 1013, 
+   "main_humidity": 39, 
+   "main_sea_level": 1013, 
+   "main_grnd_level": 1012, 
+   "visibility": 10000, 
+   "wind_speed": 3.81, 
+   "wind_deg": 11, 
+   "wind_gust": 6.19, 
+   "clouds_all": 100, 
+   "dt": 1651475451, 
+   "sys_type": 1, 
+   "sys_id": 9308, 
+   "sys_country": "VN", 
+   "sys_sunrise": 1651443946, 
+   "sys_sunset": 1651490484, 
+   "timezone": 25200, 
+   "id": 1581130, 
+   "name": "Hanoi"
+   }'
+);
+
+
+--TEST ERROR HANDLING
+insert into temp_log
+select parse_json
+(
+   '{
+   "coord_lon": "wrongtype", 
+   "coord_lat": "wrongtype", 
+   "weather_id": "wrongtype", 
+   "weather_main": "Clouds",
+   "weather_description": "overcast clouds", 
+   "weather_icon": "04d", 
+   "base": "stations", 
+   "main_temp": "wrongtype", 
+   "main_feels_like": "wrongtype", 
+   "main_temp_min": "wrongtype", 
+   "main_temp_max": "wrongtype", 
+   "main_pressure": "wrongtype", 
+   "main_humidity": "wrongtype", 
+   "main_sea_level": "wrongtype", 
+   "main_grnd_level": "wrongtype", 
+   "visibility": "wrongtype", 
+   "wind_speed": "wrongtype", 
+   "wind_deg": "wrongtype", 
+   "wind_gust": "wrongtype", 
+   "clouds_all": "wrongtype", 
+   "dt": "wrongtype", 
+   "sys_type": "wrongtype", 
+   "sys_id": "wrongtype", 
+   "sys_country": "VN", 
+   "sys_sunrise": "wrongtype", 
+   "sys_sunset": "wrongtype", 
+   "timezone": "wrongtype", 
+   "id": "wrongtype", 
+   "name": "Hanoi"
+   }'
+);
+

@@ -1,0 +1,57 @@
+use role accountadmin;
+
+
+-- Create new role
+drop role if exists intern;
+drop role if exists analyst;
+drop role if exists system_admin;
+create role intern;
+create role analyst;
+create or replace role system_admin;
+
+-- Grant read-only permissions on database PRACTICE to intern role.
+grant usage on database OPEN_WEATHER to role intern;
+grant usage on all schemas in database OPEN_WEATHER to role intern;
+grant select on all tables in database OPEN_WEATHER to role intern;
+
+-- Grant read-write permissions on database PRACTICE to intern role.
+grant usage on database PRACTICE to role intern;
+grant usage on all schemas in database PRACTICE to role intern;
+grant select,insert,update,delete on all tables in database PRACTICE to role intern;
+
+-- Grant read-write permissions on database OPEN_WEATHER to analyst role.
+grant usage on database OPEN_WEATHER to role analyst;
+grant usage on all schemas in database OPEN_WEATHER to role analyst;
+grant select,insert,update,delete on all tables in database OPEN_WEATHER to role analyst;
+-- Grant warehouse usage on 
+grant operate on warehouse COMPUTE_WH to role analyst;
+
+
+-- Grant read-write permissions on database OPEN_WEATHER to analyst role.
+grant usage on database PRACTICE to role analyst;
+grant usage on all schemas in database PRACTICE to role analyst;
+grant select,insert,update,delete on all tables in database PRACTICE to role analyst;
+
+--sysadmin has all permissions that intern and analyst role has
+grant role intern,analyst to role system_admin;
+
+grant role intern to user QUANVM4;
+grant role analyst to user QUANVM4;
+grant role system_admin to user QUANVM4;
+
+show grants to role intern;
+show grants to role analyst;
+show grants to role system_admin;
+
+use role system_admin;
+
+--connect to s3
+CREATE OR REPLACE STORAGE INTEGRATION snowflake_aws
+TYPE = EXTERNAL_STAGE
+STORAGE_PROVIDER = S3
+ENABLED = TRUE
+STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::048115563449:role/mysnowflakerole'
+STORAGE_ALLOWED_LOCATIONS = ('s3://snowflake112358');
+
+DESC INTEGRATION snowflake_aws;
+
