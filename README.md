@@ -1,6 +1,6 @@
 # AWS_Snowflake
 
-![flow] (image/flow.png)
+![flow](image/flow.png)
 ### Feature 1
 
 ##### F1.1 Set up Local Machine Environment (31/03/2022 - 13/04/2022)
@@ -35,6 +35,34 @@
 
 **Output**: runbook.MD
 
+**Folder Struture**
+├── CHANGELOG.md
+├── README.md
+├── build.sh
+├── dev
+│ ├── bin
+│ ├── include
+│ ├── lib
+│ └── pyvenv.cfg
+├── docker-compose.yml
+├── pyproject.toml
+├── src
+│ ├── init.py
+│ ├── flatting_data.py
+│ ├── load_dims.py
+│ ├── load_facts.py
+├── terraform
+│ ├── dynamo.tf
+│ ├── iam.tf
+│ ├── lambda.tf
+│ ├── main.tf
+│ ├── s3.tf
+│ ├── triggers.tf
+│ └── varriable.tf
+└── tests
+├── init.py
+└── test_flatting_data.py
+
 ### Freature 2 and 3
 
 ##### F2.0:
@@ -48,6 +76,7 @@
 2. Parse event and normalize events into flatten  data object
 3. Error handling
 
+![Kinesis](image/kinesis.png)
 ##### F2.2:
 1. Create Firehose Delivery Stream (Buffer) to store flatten data as Parquet format S3 bucket - column stored - compressed
 2. Create infra to push flatten data to Firehose Delivery Stream.
@@ -60,10 +89,11 @@
 4. Dim Data to DynamoDB (SCD1)
 5. Dim Data to s3 from DynamoDb
 
+![OLTP](image/OLAP_schema.jpeg)
+
 ##### F3.1:
 1. Enriching Data with Data Processing method as Lambda Architect
 2. Integrate data pipeline with new Data source (Dim Data)
 3. Overwrite Dim data with new Data source
 
-
-
+![System Architecture](image/System_Architecture.png)
