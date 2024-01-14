@@ -1,5 +1,6 @@
 # AWS_Snowflake
 
+![flow] (image/flow.png)
 ### Feature 1
 
 ##### F1.1 Set up Local Machine Environment (31/03/2022 - 13/04/2022)
